@@ -1,23 +1,61 @@
 from rest_framework import serializers
-from rest_framework.relations import SlugRelatedField
+from rest_framework.validators import UniqueTogetherValidator
+from rest_framework.relations import StringRelatedField
+from posts.models import Comment, Post, Follow, Group, User
 
 
-from posts.models import Comment, Post
+class GroupSerializer(serializers.ModelSerializer):
+    """Сериалайзер групп."""
+
+    class Meta:
+        model = Group
+        fields = ('id', 'title', 'slug', 'description',)
 
 
 class PostSerializer(serializers.ModelSerializer):
-    author = SlugRelatedField(slug_field='username', read_only=True)
+    """Сериалайзер постов."""
+    author = StringRelatedField(read_only=True)
 
     class Meta:
-        fields = '__all__'
+        fields = ('id', 'text', 'pub_date', 'author', 'image', 'group')
         model = Post
+        read_only_fields = ('author',)
 
 
 class CommentSerializer(serializers.ModelSerializer):
-    author = serializers.SlugRelatedField(
-        read_only=True, slug_field='username'
+    """Сериалайзер комментариев к постам."""
+    author = serializers.StringRelatedField(read_only=True)
+
+    class Meta:
+        fields = ('id', 'author', 'post', 'text', 'created',)
+        model = Comment
+        read_only_fields = ('post',)
+
+
+class FollowSerializer(serializers.ModelSerializer):
+    """Сериалайзер подписок."""
+    user = serializers.SlugRelatedField(
+        read_only=True,
+        slug_field='username',
+        default=serializers.CurrentUserDefault()
+    )
+    following = serializers.SlugRelatedField(
+        slug_field='username',
+        queryset=User.objects.all()
     )
 
     class Meta:
-        fields = '__all__'
-        model = Comment
+        fields = ('user', 'following')
+        model = Follow
+        validators = [
+            UniqueTogetherValidator(
+                queryset=Follow.objects.all(),
+                fields=('user', 'following')
+            )
+        ]
+
+    def validate(self, data):
+        if data['following'] == self.context.get('request').user:
+            raise serializers.ValidationError(
+                'Нельзя подписаться на себя!')
+        return data
