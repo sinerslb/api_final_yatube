@@ -8,24 +8,7 @@ from api.serializers import (
     CommentSerializer,
     FollowSerializer
 )
-
-
-class AuthorOrReadOnly(permissions.BasePermission):
-    """Проверка на авторство контента."""
-
-    def has_object_permission(self, request, view, obj):
-        if (
-            obj.author == request.user
-            or request.method in permissions.SAFE_METHODS
-        ):
-            return True
-        return False
-
-
-class ListRetrieveViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin,
-                          viewsets.GenericViewSet):
-    """Возвращает объект, либо список объектов."""
-    pass
+from api.permissions import AuthorOrReadOnly
 
 
 class ListCreateViewSet(mixins.ListModelMixin, mixins.CreateModelMixin,
@@ -46,7 +29,7 @@ class PostViewSet(viewsets.ModelViewSet):
         serializer.save(author=self.request.user)
 
 
-class GroupViewSet(ListRetrieveViewSet):
+class GroupViewSet(viewsets.ReadOnlyModelViewSet):
     """Вьюсет сообществ."""
 
     queryset = Group.objects.all()
